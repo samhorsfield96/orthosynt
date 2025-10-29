@@ -156,7 +156,6 @@ def main():
                                 if x in position_list[j]
                             }
 
-                            #intersection = len(species_i_COGs.intersection(species_j_COGs)) / (2.0 * window_size)
                             jaccard_index = jaccard_similarity(species_i_COGs, species_j_COGs)
 
                             if debug and (
@@ -165,16 +164,17 @@ def main():
                             ):
                                 print(f"{species_i_name}_COGs: {species_i_COGs}")
                                 print(f"{species_j_name}_COGs: {species_j_COGs}")
-                                print(f"intersection: {intersection}")
                                 print(f"jaccard_index: {jaccard_index}")
 
                             if jaccard_index >= min_jacc:
                                 #o.write(f"{COG_name}_{counter}\t{COG_name_i}\t{COG_name_j}\n")
-                                match_dict[f"{COG_name}_{cluster_id}"][i] = COG_name_i
-                                match_dict[f"{COG_name}_{cluster_id}"][j] = COG_name_j
+                                cluster_id_temp = cluster_id + 1
 
-                                if COG_name_max_id[COG_name] < cluster_id:
-                                    COG_name_max_id[COG_name] = cluster_id
+                                match_dict[f"{COG_name}_{cluster_id_temp}"][i] = COG_name_i
+                                match_dict[f"{COG_name}_{cluster_id_temp}"][j] = COG_name_j
+
+                                if COG_name_max_id[COG_name] < cluster_id_temp:
+                                    COG_name_max_id[COG_name] = cluster_id_temp
 
                                 matched_COG.add(COG_name_i)
                                 matched_COG.add(COG_name_j)
@@ -197,11 +197,12 @@ def main():
                 for COG_id, _ in synteny_dict.items():
                     COG_name_full = f"{species_names[species_idx]}_{str(COG_id).zfill(5)}"
                     if COG_name_full not in matched_COG:
+                        COG_name_max_id[COG_name] += 1
                         cluster_id = COG_name_max_id[COG_name]
                         match_list = [ "NA" for _ in range(len(header) - 1)]
                         match_list[species_idx] = COG_name_full
                         o.write(f"{COG_name}_{cluster_id}\t" + "\t".join(match_list) + "\n")
-                        COG_name_max_id[COG_name] += 1
+                        
 
     print(f"Total matches: {num_matches}")
 
