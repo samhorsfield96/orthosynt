@@ -117,12 +117,11 @@ def main():
 
             # --- Multi-genome generalization starts here ---
             matched_COG = set()
-            counter = 1
+            
+            match_dict = defaultdict(lambda: ["NA" for _ in range(len(header) - 1)])
 
             # Compare all pairwise genome combinations
             for i in range(len(synteny_lists)):
-                match_dict = defaultdict(lambda: ["NA" for _ in range(len(header) - 1)])
-                
                 for j in range(i + 1, len(synteny_lists)):
 
                     species_i_name = species_names[i]
@@ -130,7 +129,7 @@ def main():
                     synteny_i = synteny_lists[i]
                     synteny_j = synteny_lists[j]
 
-                    for COG_id_i, synteny_list_i in synteny_i.items():
+                    for cluster_id, (COG_id_i, synteny_list_i) in enumerate(synteny_i.items()):
                         species_i_COGs = {
                             position_list[i][x]
                             for x in synteny_list_i
@@ -142,9 +141,10 @@ def main():
                             COG_name_j = f"{species_j_name}_{str(COG_id_j).zfill(5)}"
 
                             # loop logic, break if upper loop, continue if lower loop
-                            if COG_name_i in matched_COG:
-                                break
+                            # if COG_name_i in matched_COG:
+                            #     continue
 
+                            # if already placed, skip to next inner loop
                             if COG_name_j in matched_COG:
                                 continue
 
@@ -168,7 +168,8 @@ def main():
 
                             if jaccard_index >= min_jacc:
                                 #o.write(f"{COG_name}_{counter}\t{COG_name_i}\t{COG_name_j}\n")
-                                match_dict[f"{COG_name}_{counter}"][j] = COG_name_j
+                                match_dict[f"{COG_name}_{cluster_id}"][i] = COG_name_i
+                                match_dict[f"{COG_name}_{cluster_id}"][j] = COG_name_j
 
                                 matched_COG.add(COG_name_i)
                                 matched_COG.add(COG_name_j)
@@ -179,11 +180,13 @@ def main():
 
                                 num_matches += 1
 
-                    counter += 1
+                                # break inner loop, found paralog
+                                break_loop = True
+                                break
 
             # print matches
             for COG_id, COG_list in match_dict.items():
-                o.write(f"{COG_name}_{counter}\t" + "\t".join(COG_list) + "\n")
+                o.write(f"{COG_id}\t" + "\t".join(COG_list) + "\n")
 
             # Handle unmatched COGs for all genomes
             for species_idx, synteny_dict in enumerate(synteny_lists):
