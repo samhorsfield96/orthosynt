@@ -97,6 +97,8 @@ def main():
     num_matches = 0
     with open(outfile, "w") as o:
         o.write("Orthogroup\t" + "\t".join(species_names) + "\n")
+
+        COG_name_max_id = defaultdict(int)
         for COG_name, species_list in COG_dict.items():
             synteny_lists = [ {} for _ in range(len(header) - 1)]
             for species_idx, gene_set in enumerate(species_list):
@@ -171,6 +173,9 @@ def main():
                                 match_dict[f"{COG_name}_{cluster_id}"][i] = COG_name_i
                                 match_dict[f"{COG_name}_{cluster_id}"][j] = COG_name_j
 
+                                if COG_name_max_id[COG_name] < cluster_id:
+                                    COG_name_max_id[COG_name] = cluster_id
+
                                 matched_COG.add(COG_name_i)
                                 matched_COG.add(COG_name_j)
 
@@ -181,7 +186,6 @@ def main():
                                 num_matches += 1
 
                                 # break inner loop, found paralog
-                                break_loop = True
                                 break
 
             # print matches
@@ -193,10 +197,11 @@ def main():
                 for COG_id, _ in synteny_dict.items():
                     COG_name_full = f"{species_names[species_idx]}_{str(COG_id).zfill(5)}"
                     if COG_name_full not in matched_COG:
+                        cluster_id = COG_name_max_id[COG_name]
                         match_list = [ "NA" for _ in range(len(header) - 1)]
                         match_list[species_idx] = COG_name_full
-                        o.write(f"{COG_name}_{counter}\t" + "\t".join(match_list) + "\n")
-                        counter += 1
+                        o.write(f"{COG_name}_{cluster_id}\t" + "\t".join(match_list) + "\n")
+                        COG_name_max_id[COG_name] += 1
 
     print(f"Total matches: {num_matches}")
 
