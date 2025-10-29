@@ -70,7 +70,7 @@ def main():
 
                 species_gene_position = []
                 for x in species_genes:
-                    hit = re.search("^.+_0*(\d+)", x)
+                    hit = re.search(r"^.+_0*(\d+)", x)
                     if hit:
                         species_gene_position.append(int(hit.group(1)))
                 
@@ -132,20 +132,20 @@ def main():
                 COG_name1 = species_names[0] + "_" + str(COG_id1).zfill(5)
 
                 for COG_id2, synteny_list2 in synteny_list_species2.items():
+                    COG_name2 = species_names[1] + "_" + str(COG_id2).zfill(5)
+
+                    if COG_name1 in matched_COG:
+                        break
+
+                    if COG_name2 in matched_COG:
+                        continue
+                    
                     species2_COGs = []
                     for x in synteny_list2:
                         if x in position_list[0]:
                             species2_COGs.append(position_list[0][x])
 
                     species2_COGs = set(species2_COGs)
-
-                    COG_name2 = species_names[1] + "_" + str(COG_id2).zfill(5)
-
-                    if COG_name1 in matched_COG:
-                        continue
-
-                    if COG_name2 in matched_COG:
-                        continue
 
                     intersection = len(species1_COGs.intersection(species2_COGs)) / (2.0 * window_size)
                     jaccard_index = jaccard_similarity(species1_COGs, species2_COGs)
