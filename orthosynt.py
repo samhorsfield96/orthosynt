@@ -23,7 +23,20 @@ def get_options():
                     type=float,
                     default=0.5,
                     help='Proportion of matches to keep cluster. Default=0.5')
+    IO.add_argument('--debug',
+                    action="store_true",
+                    default=False,
+                    help='Debug mode. Only run if comparing self-self.')
     return parser.parse_args()
+
+# for debugging
+search_COG1 = ""
+search_COG2 = ""
+
+def jaccard_similarity(set1, set2):
+    intersection = len(set1.intersection(set2))
+    union = (len(set1) + len(set2)) - intersection
+    return float(intersection) / union
 
 def main():
     options = get_options()
@@ -31,6 +44,7 @@ def main():
     window_size = options.window_size
     synteny_prop = options.synteny_prop
     outfile = options.outfile
+    debug = options.debug
 
     COG_dict = {}
     position_list = None
@@ -117,9 +131,6 @@ def main():
                 species1_COGs = set(species1_COGs)
                 COG_name1 = species_names[0] + "_" + str(COG_id1).zfill(5)
 
-                if COG_name1 in matched_COG:
-                    continue
-
                 for COG_id2, synteny_list2 in synteny_list_species2.items():
                     species2_COGs = []
                     for x in synteny_list2:
@@ -130,16 +141,31 @@ def main():
 
                     COG_name2 = species_names[1] + "_" + str(COG_id2).zfill(5)
 
+                    if COG_name1 in matched_COG:
+                        continue
+
                     if COG_name2 in matched_COG:
                         continue
 
                     intersection = len(species1_COGs.intersection(species2_COGs)) / (2.0 * window_size)
+                    jaccard_index = jaccard_similarity(species1_COGs, species2_COGs)
 
-                    if intersection >= synteny_prop:
+                    if debug:
+                        if COG_name1 == search_COG1 and COG_name2 == search_COG2:
+                            print(f"species1_COGs: {species1_COGs}")
+                            print(f"species2_COGs: {species2_COGs}")
+                            print(f"intersection: {intersection}")
+                            print(f"jaccard_index: {jaccard_index}")
+
+                    if jaccard_index >= synteny_prop:
                         o.write(COG_name + "_" + str(counter) + "\t" + COG_name1 + "\t" + COG_name2 + "\n")
                         #print(intersection)
                         #print(species1_COGs)
                         #print(species2_COGs)
+
+                        if debug:
+                            if COG_id1 != COG_id2:
+                                print(f"Error: genome 1 {COG_id1} != genome 2 {COG_id2}")
 
                         matched_COG.add(COG_name1)
                         matched_COG.add(COG_name2)
