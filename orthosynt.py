@@ -19,10 +19,10 @@ def get_options():
                     type=int,
                     default=4,
                     help='Size either side of a gene of interest to search. Default=4')
-    IO.add_argument('--synteny-prop',
+    IO.add_argument('--min-jacc',
                     type=float,
                     default=0.5,
-                    help='Proportion of matches to keep cluster. Default=0.5')
+                    help='Minimum Jaccard index of matches to keep cluster. Default=0.5')
     IO.add_argument('--debug',
                     action="store_true",
                     default=False,
@@ -42,7 +42,7 @@ def main():
     options = get_options()
     infile = options.infile
     window_size = options.window_size
-    synteny_prop = options.synteny_prop
+    min_jacc = options.min_jacc
     outfile = options.outfile
     debug = options.debug
 
@@ -94,6 +94,7 @@ def main():
 
     genes_to_ignore = set()
     COGs_to_cluster = {}
+    num_matches = 0
     with open(outfile, "w") as o:
         o.write("Orthogroup\t" + "\t".join(species_names) + "\n")
         for COG_name, species_list in COG_dict.items():
@@ -114,10 +115,9 @@ def main():
 
                     synteny_lists[species_idx][current_id] = synteny_range
 
+            # TODO make this so it generalises across multiple genomes, not only 2
             synteny_list_species1 = synteny_lists[0]
             synteny_list_species2 = synteny_lists[1]
-
-            #print(synteny_list_species1)
 
             counter = 1
             matched_COG = set()
@@ -157,11 +157,9 @@ def main():
                             print(f"intersection: {intersection}")
                             print(f"jaccard_index: {jaccard_index}")
 
-                    if jaccard_index >= synteny_prop:
+                    if jaccard_index >= min_jacc:
                         o.write(COG_name + "_" + str(counter) + "\t" + COG_name1 + "\t" + COG_name2 + "\n")
-                        #print(intersection)
-                        #print(species1_COGs)
-                        #print(species2_COGs)
+                        num_matches += 1
 
                         if debug:
                             if COG_id1 != COG_id2:
@@ -185,6 +183,7 @@ def main():
                     o.write(COG_name + "_" + str(counter) + "\t" + "NA" + "\t" + COG_id + "\n")
                     counter += 1
 
+    print(f"Total matches: {num_matches}")
 
 if __name__ == "__main__":
     main()
