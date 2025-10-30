@@ -10,3 +10,6 @@ python orthosynt.py --infile data/orthofinder_bu_vs_pv.tsv --window-size 60 --mi
 
 python orthosynt.py --infile data/orthofinder_bu_only.tsv --window-size 8 --min-jacc 0.5 --outfile results/results_bu_only_ws8_mj0.5.tsv
 python orthosynt.py --infile data/orthofinder_pv_only.tsv --window-size 8 --min-jacc 0.5 --outfile results/results_pv_only_ws8_mj0.5.tsv
+
+python orthosynt.py --infile data/orthofinder_bu_multi.tsv --window-size 8 --min-jacc 0.5 --outfile results/results_bu_only_ws8_mj0.5.tsv
+python orthosynt.py --infile data/orthofinder_pv_multi.tsv --window-size 8 --min-jacc 0.5 --outfile results/results_pv_only_ws8_mj0.5.tsv
