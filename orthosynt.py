@@ -6,7 +6,7 @@ import re
 def get_options():
     description = "Splits clusters based on synteny."
     parser = argparse.ArgumentParser(description=description,
-                                        prog='python orthosynteny.py')
+                                        prog='python orthosynt.py')
     IO = parser.add_argument_group('Input/options.out')
     IO.add_argument('--infile',
                     required=True,
@@ -97,6 +97,8 @@ def main():
     num_matches = 0
     with open(outfile, "w") as o:
         o.write("Orthogroup\t" + "\t".join(species_names) + "\n")
+
+        COG_name_max_id = defaultdict(int)
         for COG_name, species_list in COG_dict.items():
             synteny_lists = [ {} for _ in range(len(header) - 1)]
             for species_idx, gene_set in enumerate(species_list):
@@ -115,73 +117,92 @@ def main():
 
                     synteny_lists[species_idx][current_id] = synteny_range
 
-            # TODO make this so it generalises across multiple genomes, not only 2
-            synteny_list_species1 = synteny_lists[0]
-            synteny_list_species2 = synteny_lists[1]
-
-            counter = 1
+            # --- Multi-genome generalization starts here ---
             matched_COG = set()
-            for COG_id1, synteny_list1 in synteny_list_species1.items():
-                
-                species1_COGs = []
-                for x in synteny_list1:
-                    if x in position_list[0]:
-                        species1_COGs.append(position_list[0][x])
-
-                species1_COGs = set(species1_COGs)
-                COG_name1 = species_names[0] + "_" + str(COG_id1).zfill(5)
-
-                for COG_id2, synteny_list2 in synteny_list_species2.items():
-                    COG_name2 = species_names[1] + "_" + str(COG_id2).zfill(5)
-
-                    if COG_name1 in matched_COG:
-                        break
-
-                    if COG_name2 in matched_COG:
-                        continue
-                    
-                    species2_COGs = []
-                    for x in synteny_list2:
-                        if x in position_list[0]:
-                            species2_COGs.append(position_list[0][x])
-
-                    species2_COGs = set(species2_COGs)
-
-                    intersection = len(species1_COGs.intersection(species2_COGs)) / (2.0 * window_size)
-                    jaccard_index = jaccard_similarity(species1_COGs, species2_COGs)
-
-                    if debug:
-                        if COG_name1 == search_COG1 and COG_name2 == search_COG2:
-                            print(f"species1_COGs: {species1_COGs}")
-                            print(f"species2_COGs: {species2_COGs}")
-                            print(f"intersection: {intersection}")
-                            print(f"jaccard_index: {jaccard_index}")
-
-                    if jaccard_index >= min_jacc:
-                        o.write(COG_name + "_" + str(counter) + "\t" + COG_name1 + "\t" + COG_name2 + "\n")
-                        num_matches += 1
-
-                        if debug:
-                            if COG_id1 != COG_id2:
-                                print(f"Error: genome 1 {COG_id1} != genome 2 {COG_id2}")
-
-                        matched_COG.add(COG_name1)
-                        matched_COG.add(COG_name2)
-                        counter += 1
-                
-            for COG_id1, synteny_list in synteny_list_species1.items():
-                COG_id = species_names[0] + "_" + str(COG_id1).zfill(5)
-
-                if COG_id not in matched_COG:
-                    o.write(COG_name + "_" + str(counter) + "\t" + COG_id + "\t" + "NA" + "\n")
-                    counter += 1
             
-            for COG_id2, synteny_list in synteny_list_species2.items():
-                COG_id = species_names[1] + "_" + str(COG_id2).zfill(5)
+            match_dict = defaultdict(lambda: ["NA" for _ in range(len(header) - 1)])
 
-                if COG_id not in matched_COG:
-                    o.write(COG_name + "_" + str(counter) + "\t" + "NA" + "\t" + COG_id + "\n")
-                    counter += 1
+            # Compare all pairwise genome combinations
+            for i in range(len(synteny_lists)):
+                for j in range(i + 1, len(synteny_lists)):
+
+                    species_i_name = species_names[i]
+                    species_j_name = species_names[j]
+                    synteny_i = synteny_lists[i]
+                    synteny_j = synteny_lists[j]
+
+                    for cluster_id, (COG_id_i, synteny_list_i) in enumerate(synteny_i.items()):
+                        species_i_COGs = {
+                            position_list[i][x]
+                            for x in synteny_list_i
+                            if x in position_list[i]
+                        }
+                        COG_name_i = f"{species_i_name}_{str(COG_id_i).zfill(5)}"
+
+                        for COG_id_j, synteny_list_j in synteny_j.items():
+                            COG_name_j = f"{species_j_name}_{str(COG_id_j).zfill(5)}"
+
+                            # loop logic, break if upper loop, continue if lower loop
+                            # if COG_name_i in matched_COG:
+                            #     continue
+
+                            # if already placed, skip to next inner loop
+                            if COG_name_j in matched_COG:
+                                continue
+
+                            species_j_COGs = {
+                                position_list[j][x]
+                                for x in synteny_list_j
+                                if x in position_list[j]
+                            }
+
+                            jaccard_index = jaccard_similarity(species_i_COGs, species_j_COGs)
+
+                            if debug and (
+                                (COG_name_i == search_COG1 and COG_name_j == search_COG2)
+                                or (COG_name_i == search_COG2 and COG_name_j == search_COG1)
+                            ):
+                                print(f"{species_i_name}_COGs: {species_i_COGs}")
+                                print(f"{species_j_name}_COGs: {species_j_COGs}")
+                                print(f"jaccard_index: {jaccard_index}")
+
+                            if jaccard_index >= min_jacc:
+                                #o.write(f"{COG_name}_{counter}\t{COG_name_i}\t{COG_name_j}\n")
+                                cluster_id_temp = cluster_id + 1
+
+                                match_dict[f"{COG_name}_{cluster_id_temp}"][i] = COG_name_i
+                                match_dict[f"{COG_name}_{cluster_id_temp}"][j] = COG_name_j
+
+                                if COG_name_max_id[COG_name] < cluster_id_temp:
+                                    COG_name_max_id[COG_name] = cluster_id_temp
+
+                                matched_COG.add(COG_name_i)
+                                matched_COG.add(COG_name_j)
+
+                                if debug: 
+                                    if COG_id_i != COG_id_j: 
+                                        print(f"Error: genome 1 {COG_id_i} != genome 2 {COG_id_j}")
+
+                                num_matches += 1
+
+                                # break inner loop, found paralog
+                                break
+
+            # print matches
+            for COG_id, COG_list in match_dict.items():
+                o.write(f"{COG_id}\t" + "\t".join(COG_list) + "\n")
+
+            # Handle unmatched COGs for all genomes
+            for species_idx, synteny_dict in enumerate(synteny_lists):
+                for COG_id, _ in synteny_dict.items():
+                    COG_name_full = f"{species_names[species_idx]}_{str(COG_id).zfill(5)}"
+                    if COG_name_full not in matched_COG:
+                        COG_name_max_id[COG_name] += 1
+                        cluster_id = COG_name_max_id[COG_name]
+                        match_list = [ "NA" for _ in range(len(header) - 1)]
+                        match_list[species_idx] = COG_name_full
+                        o.write(f"{COG_name}_{cluster_id}\t" + "\t".join(match_list) + "\n")
+                        
 
     print(f"Total matches: {num_matches}")
 
